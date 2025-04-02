@@ -1,0 +1,1 @@
+python play_shuffleboard_with_franka.py --stage_path 'franka_shuffleboard.usda' --filepath "raw_data_1/apriltag_poses_1743587718.json" --verbose --train_iters_planning 5
