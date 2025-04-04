@@ -6,7 +6,7 @@ import time
 from pupil_apriltags import Detector
 
 # Define tag size in meters
-tag_size = 0.04  # 4 cm
+tag_size = 0.036  # 4 cm
 
 # Initialize Intel RealSense pipeline
 pipeline = rs.pipeline()
@@ -118,7 +118,7 @@ while True:
     elif key == ord('s'):
         recording = False
         # Save to JSON
-        filename = f"raw_data_1/apriltag_poses_{int(time.time())}.json"
+        filename = f"raw_data/apriltag_poses_{int(time.time())}.json"
         with open(filename, "w") as f:
             json.dump(pose_data, f, indent=4)
         print(f"🟢 Recording stopped. Data saved to {filename}")

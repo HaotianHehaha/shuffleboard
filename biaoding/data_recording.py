@@ -10,13 +10,12 @@ import subprocess
 
 
 # Define tag size in meters
-tag_size = 0.06  # 64 mm
+tag_size = 0.06  
 
 # Initialize Intel RealSense pipeline
 pipeline = rs.pipeline()
 config = rs.config()
 config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
-
 
 # Start streaming
 profile = pipeline.start(config)

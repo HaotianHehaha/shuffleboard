@@ -46,7 +46,7 @@ matrices, homogeneous_matrices = load_matrices(file_path)
 cam2base_transformation_matrix = perform_hand_eye_calibration(matrices, homogeneous_matrices)
 
 print("Transformation from base to camera is:")
-print(cam2base_transformation_matrix)
+print(cam2base_transformation_matrix.tolist())
 
 
 

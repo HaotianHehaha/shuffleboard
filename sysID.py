@@ -79,6 +79,7 @@ class sysID():
         self.kd = 1
         self.kf = 100.0
         self.mu = 0.03
+        self.best_mu = 0.03
         self.grad_lower_bound = wp.float32(-1)
         self.grad_upper_bound = wp.float32(1)
 
@@ -118,6 +119,7 @@ class sysID():
         self.target[-1] = height/2 + self.board_initial_position[-1]
        
         self.loss = wp.zeros(1, dtype=float,requires_grad=True)
+        self.best_loss = 1.0
 
         # allocate sim states for trajectory
         self.states = []
@@ -128,12 +130,13 @@ class sysID():
         self.optimizer = warp.optim.SGD(
             [self.model.shape_materials.mu],
             lr=self.train_rate,
+            momentum=0.7
         )
 
         self.renderer = warp.sim.render.SimRenderer(model=self.model, path='box.usda', scaling=1.0)
 
         # capture forward/backward passes
-        self.use_cuda_graph = False#wp.get_device().is_cuda
+        self.use_cuda_graph = wp.get_device().is_cuda
         if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.tape = wp.Tape()
@@ -169,12 +172,16 @@ class sysID():
             # gradient descent step
             x = self.model.shape_materials.mu
 
-            # self.render()
-            # self.renderer.save()
             if self.loss.numpy()[0]< 1e-4:
                 flag = 1
             else:
                 flag = 0
+
+            if self.loss.numpy()[0] < self.best_loss:
+                self.best_loss = self.loss.numpy()[0]
+                self.best_mu = x.numpy()[0]
+                self.render()
+                self.renderer.save()
 
             # pdb.set_trace()
             wp.launch(enforce_grad_kernel, dim=x.grad.shape[0], inputs=[self.grad_lower_bound, self.grad_upper_bound, x.grad])
@@ -203,7 +210,7 @@ class sysID():
                 self.renderer.render(self.states[i])
                 self.renderer.render_box(
                     pos=self.target,
-                    rot=self.real_setting['final_quaternion'],
+                    rot=wp.quat_identity(),
                     extents=(width1/2, width2/2, height/2),
                     name="target",
                     color=(0.0, 0.0, 0.0),

@@ -2,6 +2,8 @@ import pinocchio as pin
 import numpy as np
 from scipy.optimize import minimize
 import scipy
+import subprocess
+import re
 
 urdf_path = "franka/franka.urdf"  # 替换为你的 URDF 文件路径
 model = pin.buildModelFromUrdf(urdf_path)
@@ -41,7 +43,7 @@ def hitting_pose(position, rotation, bound_lower, bound_upper):
         
         # 获取当前末端执行器的位姿
         current_placement = data.oMf[end_effector_frame_id]
-        current_position = current_placement.translation-np.array([0.0, 0.0, 0.005])
+        current_position = current_placement.translation#-np.array([0.0, 0.0, 0.005])
         current_rotation = current_placement.rotation
         
         # 计算位置误差
@@ -54,13 +56,31 @@ def hitting_pose(position, rotation, bound_lower, bound_upper):
         total_error = position_error + rotation_error
         return total_error
     
+    # 运行 echo_robot_state 获取机械臂关节角
+    robot_id = '192.168.1.101'
+    result = subprocess.run(
+        ['/media/haotian/new_volumn/code/libfranka/build/examples/echo_robot_state', robot_id],  # 替换为实际路径
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=True
+    )
+    # 解析输出，提取 q 字段
+    output = result.stdout
+    # 使用正则表达式提取 "q" 的值
+    match = re.search(r'"q":\s*\[([^\]]+)\]', output)
+    if match:
+        q_str = match.group(1)  # 提取 "q" 的值部分
+        q_0 = np.array([float(x) for x in q_str.split(",")]+[0,0])  # 转换为 NumPy 数组
+    else:
+        raise ValueError("q not found in echo_robot_state output")
     while True:
-        # 定义初始关节角度（中立位置）
-        q0 = np.random.randn(len(pin.neutral(model)))
-        # print("Initial joint angles (rad):", q0.tolist())
+        q1 = q_0 + np.random.randn(len(pin.neutral(model)))/2
+ 
+        # print("Initial joint angles (rad):", q1.tolist())
 
         bounds =  zip(bound_lower, bound_upper)
-        result = minimize(objective, q0, method='SLSQP', bounds=bounds, tol = 1e-5)
+        result = minimize(objective, q1, method='SLSQP', bounds=bounds, tol = 1e-5)
         if result.fun < 1e-4:
             break
     optimized_q = result.x

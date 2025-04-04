@@ -130,21 +130,23 @@ def tracking(filepath = 'apriltag_poses_1741847062.json'):
     
     # Calculate the average origin and rotation matrix
     origin = np.zeros(3)
-    R = np.zeros((3, 3))
+    quaternions = []
     for i in range(10):       
         origin += np.array([data[i]['translation']['x'], data[i]['translation']['y'], data[i]['translation']['z']])
-        R += np.array(data[i]['rotation_matrix'])
+        quaternion = Rotation.from_matrix(data[i]['rotation_matrix']).as_quat()
+        quaternions.append(quaternion)
     origin /= 10
-    R /= 10
+    avg_quaternion = np.mean(quaternions, axis=0)
+    R = Rotation.from_quat(avg_quaternion).as_matrix() 
     
     transformed_data = transform_to_new_coordinate_system(data, origin, R)
     
     transformed_velocities = calculate_velocity(transformed_data)
-    transformed_angular_velocities = calculate_angular_velocity(transformed_data)
+    # transformed_angular_velocities = calculate_angular_velocity(transformed_data)
     v = []
     for i in range(len(transformed_velocities) ):
         transformed_data[i]['velocity'] = transformed_velocities[i]['velocity']
-        transformed_data[i]['angular_velocity'] = transformed_angular_velocities[i]['angular_velocity']
+        # transformed_data[i]['angular_velocity'] = transformed_angular_velocities[i]['angular_velocity']
         v.append(np.linalg.norm(np.array(transformed_velocities[i]['velocity'])))
     
     # get initial data
@@ -158,7 +160,7 @@ def tracking(filepath = 'apriltag_poses_1741847062.json'):
     initial_velocity = np.array(transformed_velocities[index]['velocity'])
     initial_velocity[-1] = 0.0
 
-    initial_angular_velocity = np.array(transformed_angular_velocities[index]['angular_velocity'])
+    # initial_angular_velocity = np.array(transformed_angular_velocities[index]['angular_velocity'])
     initial_time = transformed_data[index]['timestamp']
 
     # get final data
@@ -169,13 +171,13 @@ def tracking(filepath = 'apriltag_poses_1741847062.json'):
     #         break
 
     final_position = np.zeros(3)
-    final_orientation = np.zeros((3, 3))
+    # final_orientation = np.zeros((3, 3))
     for i in range(1,11):
         final_position += np.array([transformed_data[-i]['translation']['x'], transformed_data[-i]['translation']['y'], transformed_data[-i]['translation']['z']])
-        final_orientation += np.array(transformed_data[-i]['rotation_matrix'])
+        # final_orientation += np.array(transformed_data[-i]['rotation_matrix'])
     final_position /= 10
-    final_orientation /= 10
-    final_quaternion = Rotation.from_matrix(final_orientation).as_quat()
+    # final_orientation /= 10
+    # final_quaternion = Rotation.from_matrix(final_orientation).as_quat()
     # final_velocity = np.array(transformed_velocities[final_idx]['velocity'])
     # final_angular_velocity = np.array(transformed_angular_velocities[final_idx]['angular_velocity'])
     # final_time = transformed_data[final_idx]['timestamp']
@@ -194,11 +196,11 @@ def tracking(filepath = 'apriltag_poses_1741847062.json'):
     real_setting = {}
     real_setting['initial_position'] = initial_position.tolist()
     real_setting['initial_velocity'] = initial_velocity.tolist()
-    real_setting['initial_angular_velocity'] = initial_angular_velocity.tolist()
+    # real_setting['initial_angular_velocity'] = initial_angular_velocity.tolist()
     real_setting['initial_quaternion'] = initial_quaternion.tolist()
     real_setting['initial_time'] = initial_time
     real_setting['final_position'] = final_position.tolist()
-    real_setting['final_quaternion'] = final_quaternion.tolist()
+    # real_setting['final_quaternion'] = final_quaternion.tolist()
     # real_setting['final_velocity'] = final_velocity.tolist()
     # real_setting['final_angular_velocity'] = final_angular_velocity.tolist()
     # real_setting['final_time'] = final_time

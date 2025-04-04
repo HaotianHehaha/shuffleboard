@@ -7,7 +7,6 @@ import warp.sim
 import warp.sim.render
 import warp.tape
 
-import pdb
 from copy import deepcopy
 
 URDF_PATH = "franka/franka.urdf"
@@ -50,8 +49,8 @@ class WarpFrankaEnv():
         self.kf = 100.0 
         self.mu = mu
 
-        self.shuffboard_size = [0.8, 0.15 ]
-        self.board_initial_position = [1.2, 0.0, 0.065]
+        self.shuffboard_size = [0.15, 0.6 ]
+        self.board_initial_position = [0.48, -0.3, 0.065]
         self.box_size = [0.02,0.02,0.02]
         self.initial_position = initial_position
 
@@ -141,7 +140,6 @@ class WarpFrankaEnv():
         builder.add_shape_plane(pos=self.board_initial_position,rot=wp.quat_from_axis_angle(wp.vec3((1.,0.,0.)), wp.float32(np.pi/2)),width=self.shuffboard_size[0],length=self.shuffboard_size[1],ke=self.ke_simple, kf=self.kf, kd=self.kd_simple, mu=self.mu)
 
         b = builder.add_body(origin=warp.transform([0.0,0.0,0.0], warp.quat_identity()))
-        # b = builder.add_body(origin=warp.transform(self.initial_position, warp.quat_identity()))
         builder.add_shape_box(body=b, hx=self.box_size[0], hy=self.box_size[1], hz=self.box_size[2], density=750, ke=self.ke_simple, kf=self.kf, kd=self.kd_simple, mu=self.mu)
         builder.add_joint_free(child=b,parent_xform=warp.transform(self.initial_position, warp.quat_identity()), name="free_joint")
 
@@ -253,7 +251,7 @@ class WarpFrankaEnv():
                 
                 self.render(renderer=self.renderer)
                 
-                box_linear_speed = np.linalg.norm(self.state_sequence[0].joint_qd.numpy()[3:6]) # np.linalg.norm(self.state_sequence[0].body_qd.numpy()[0,3:6])
+                box_linear_speed = np.linalg.norm(self.state_sequence[0].joint_qd.numpy()[3:6]) 
                 if box_linear_speed < 0.01 and self.flag==1:
                     projection = np.dot(self.state_sequence[0].joint_q.numpy()[:3],self.orientation)
                     # projection = np.dot((self.state_sequence[0].body_q.numpy()[0,:3]-self.initial_position),self.orientation)
