@@ -19,7 +19,7 @@ def calculate_velocity(data):
         
         velocity = (pos2 - pos1) / dt
         velocities.append({
-            'timestamp': t2,
+            'timestamp': data[i]['timestamp'],
             'velocity': velocity.tolist()
         })
     return velocities
@@ -125,7 +125,7 @@ def fix_rotation_matrix(rotation_matrix):
     
     return fixed_rotation_matrix
 
-def tracking(filepath = 'apriltag_poses_1741847062.json'):
+def tracking(filepath ):
     data = load_data(filepath)
     
     # Calculate the average origin and rotation matrix
@@ -145,23 +145,23 @@ def tracking(filepath = 'apriltag_poses_1741847062.json'):
     # transformed_angular_velocities = calculate_angular_velocity(transformed_data)
     v = []
     for i in range(len(transformed_velocities) ):
-        transformed_data[i]['velocity'] = transformed_velocities[i]['velocity']
+        transformed_data[i+1]['velocity'] = transformed_velocities[i]['velocity']
         # transformed_data[i]['angular_velocity'] = transformed_angular_velocities[i]['angular_velocity']
         v.append(np.linalg.norm(np.array(transformed_velocities[i]['velocity'])))
     
     # get initial data
     # print(np.array([transformed_data[0]['translation']['x'], transformed_data[0]['translation']['y'], transformed_data[0]['translation']['z']]))
 
-    index = np.argmax(v) -1
-    initial_position = np.array([transformed_data[index]['translation']['x'], transformed_data[index]['translation']['y'], transformed_data[index]['translation']['z']])
-    initial_orientation = np.array(transformed_data[index]['rotation_matrix'])
+    index = np.argmax(v)+4
+    initial_position = np.array([transformed_data[index+1]['translation']['x'], transformed_data[index+1]['translation']['y'], transformed_data[index+1]['translation']['z']])
+    initial_orientation = np.array(transformed_data[index+1]['rotation_matrix'])
     initial_orientation = fix_rotation_matrix(initial_orientation)
     initial_quaternion = Rotation.from_matrix(initial_orientation).as_quat()
     initial_velocity = np.array(transformed_velocities[index]['velocity'])
     initial_velocity[-1] = 0.0
 
     # initial_angular_velocity = np.array(transformed_angular_velocities[index]['angular_velocity'])
-    initial_time = transformed_data[index]['timestamp']
+    initial_time = transformed_data[index+1]['timestamp']
 
     # get final data
     # noise = np.array(v[-10:]).mean()

@@ -6,8 +6,7 @@ import numpy as np
 import warp.sim
 import warp.sim.render
 import warp.tape
-
-from copy import deepcopy
+import pdb
 
 URDF_PATH = "franka/franka.urdf"
 
@@ -27,8 +26,7 @@ def velocity_loss_kernel(body_qd: wp.array(dtype=wp.spatial_vector), target_spee
 
 
 class WarpFrankaEnv():
-    def __init__(self,stage_path='franka_shuffleboard.usda',integrator='featherstone',num_frames = 60, mu = 0.05, 
-                 initial_position = [0.5,0.0,0.080],target_position = [1.0, 0.0,0.080]):
+    def __init__(self,stage_path_1, stage_path_2, initial_position ,target_position, integrator='featherstone',num_frames = 60, mu = 0.05):
         super(WarpFrankaEnv).__init__()
 
         self.num_frames = num_frames
@@ -39,18 +37,19 @@ class WarpFrankaEnv():
         # sim frequency
         self.sim_substeps_1 = 50
         self.sim_dt_1 = self.frame_dt / self.sim_substeps_1
-        self.sim_substeps_2 = 8
+        self.sim_substeps_2 = 10
         self.sim_dt_2 = self.frame_dt / self.sim_substeps_2
 
         self.iter = 0
-        self.render_time = 0.0
-        self.ke = 1e4
-        self.kd = 10.0
+        self.render_time_1 = 0.0
+        self.render_time_2 = 0.0
+        self.ke = 1e3
+        self.kd = 20.0
         self.kf = 100.0 
         self.mu = mu
 
-        self.shuffboard_size = [0.15, 0.6 ]
-        self.board_initial_position = [0.48, -0.3, 0.065]
+        self.shuffboard_size = [0.15, 1.6 ]
+        self.board_initial_position = [0.52, -0.3, 0.065]
         self.box_size = [0.02,0.02,0.02]
         self.initial_position = initial_position
 
@@ -65,26 +64,28 @@ class WarpFrankaEnv():
         rotation_matrix[:,0] = self.orientation
         rotation_matrix[:,2] = np.array([0.0, 0.0, -1.0])
         rotation_matrix[:,1] = np.cross( np.array([0.0, 0.0, -1.0]),self.orientation)
-        self.joint_q_franka =  hitting_pose(np.array(self.initial_position)-0.05*self.orientation, rotation_matrix, self.model.joint_limit_lower.numpy(), self.model.joint_limit_upper.numpy())
+        self.joint_q_franka =  hitting_pose(np.array(self.initial_position)-0.12*self.orientation, rotation_matrix, self.model.joint_limit_lower.numpy(), self.model.joint_limit_upper.numpy())#[0.7831982100195419, 0.5138631013125103, -0.8154827733306722, -2.2835277356206007, 0.6844784109333274, 2.539921582929781, 1.7888926860773928, 0.0, 0.0]#
         self.joint_q_franka[-2:] = [0.0,0.0]
         
         # set ground parameters
-        self.model.shape_materials.ke.fill_(self.ke)
-        self.model.shape_materials.kd.fill_(self.kd)
+        self.model.shape_materials.ke[2:].fill_(self.ke/100)
+        self.model.shape_materials.kd[2:].fill_(self.kd)
         self.model.shape_materials.kf.fill_(self.kf)
         self.model.shape_materials.restitution.fill_(0.0)
         self.model.shape_materials.mu.fill_(self.mu)
         self.model.rigid_contact_margin = 1e-3
-        
-        self.initial_state = self.model.state()
-        self.state_sequence = []
+
         
         self.model.joint_q.assign(self.model.joint_q.numpy().tolist()[:7] + self.joint_q_franka)
+        
 
         # set different gravity for franka
         gravity_normal = self.model.gravity.reshape(1, 3)
         gravity_articuation = np.array([[0., 0., 0.]], dtype=object)
         self.model.gravity = wp.array(np.concatenate([gravity_normal, gravity_articuation],axis=0),dtype=wp.vec3)
+
+        self.initial_state = self.model.state()
+        self.state_sequence = []
 
         if integrator == 'featherstone':
             self.integrator = warp.sim.FeatherstoneIntegrator(self.model)
@@ -98,9 +99,10 @@ class WarpFrankaEnv():
         self.model_simple = self.simple_model()
         self.integrator_fast = warp.sim.FeatherstoneIntegrator(self.model_simple)
 
-        if stage_path:
-            self.renderer = warp.sim.render.SimRenderer(self.model_simple, stage_path, scaling=1.0)
-
+        if stage_path_1:
+            self.renderer_1 = warp.sim.render.SimRenderer(self.model, stage_path_1, scaling=1.0)
+        if stage_path_2:
+            self.renderer_2 = warp.sim.render.SimRenderer(self.model_simple, stage_path_2, scaling=1.0)
         
         self.flag = 0 # 0 represent before hitting time  1 represent after hitting time
     
@@ -111,7 +113,7 @@ class WarpFrankaEnv():
         builder.add_shape_plane(pos=self.board_initial_position,rot=wp.quat_from_axis_angle(wp.vec3((1.,0.,0.)), wp.float32(np.pi/2)),width=self.shuffboard_size[0],length=self.shuffboard_size[1],ke=self.ke, kf=self.kf, kd=self.kd, mu=self.mu)
 
         b = builder.add_body(origin=warp.transform([0.0,0.0,0.0], warp.quat_identity()))
-        builder.add_shape_box(body=b, hx=self.box_size[0], hy=self.box_size[1], hz=self.box_size[2], density=750, ke=self.ke, kf=self.kf, kd=self.kd, mu=self.mu)
+        builder.add_shape_box(body=b, hx=self.box_size[0], hy=self.box_size[1], hz=self.box_size[2], density=630, ke=self.ke, kf=self.kf, kd=self.kd, mu=self.mu)
         builder.add_joint_free(child=b,parent_xform=warp.transform(self.initial_position, warp.quat_identity()), name="free_joint")
         
         warp.sim.parse_urdf(
@@ -134,13 +136,13 @@ class WarpFrankaEnv():
         self.model.soft_contact_restitution = 1.0
 
     def simple_model(self):
-        self.ke_simple = 50
-        self.kd_simple = 0.5
+        self.ke_simple = 100
+        self.kd_simple = 1
         builder = warp.sim.ModelBuilder(up_vector=(0.0, 0.0, 1.0))
         builder.add_shape_plane(pos=self.board_initial_position,rot=wp.quat_from_axis_angle(wp.vec3((1.,0.,0.)), wp.float32(np.pi/2)),width=self.shuffboard_size[0],length=self.shuffboard_size[1],ke=self.ke_simple, kf=self.kf, kd=self.kd_simple, mu=self.mu)
 
         b = builder.add_body(origin=warp.transform([0.0,0.0,0.0], warp.quat_identity()))
-        builder.add_shape_box(body=b, hx=self.box_size[0], hy=self.box_size[1], hz=self.box_size[2], density=750, ke=self.ke_simple, kf=self.kf, kd=self.kd_simple, mu=self.mu)
+        builder.add_shape_box(body=b, hx=self.box_size[0], hy=self.box_size[1], hz=self.box_size[2], density=630, ke=self.ke_simple, kf=self.kf, kd=self.kd_simple, mu=self.mu)
         builder.add_joint_free(child=b,parent_xform=warp.transform(self.initial_position, warp.quat_identity()), name="free_joint")
 
         model_simple = builder.finalize()
@@ -155,18 +157,18 @@ class WarpFrankaEnv():
         model_simple.soft_contact_restitution = 1.0
 
         model_simple.gravity = wp.array(model_simple.gravity.reshape(1, 3),dtype=wp.vec3)
-        # joint_q[:3] = joint_q[:3] + self.initial_position
-        # model_simple.body_q.assign(joint_q)
-        # model_simple.body_qd.assign(joint_qd)
 
         return model_simple
 
 
-    def simulate_slow(self,ee_speed):
+    def simulate_slow(self,ee_speed,step):
         for j in range(self.sim_substeps):
             control = self.model.control()
-            self.joint_qd_franka = compute_joint_v_from_ee(self.state_sequence[0].joint_q.numpy()[7:],self.orientation*ee_speed)
-            control.joint_act.assign(self.joint_qd_franka)
+            if step < 60*0.8:
+                self.joint_qd_franka = compute_joint_v_from_ee(self.state_sequence[0].joint_q.numpy()[7:], np.array([1.0,0.0,0.0])*ee_speed)
+                control.joint_act.assign(self.joint_qd_franka)
+            else:
+                control.joint_act.assign([0.0]*9)
             
             self.state_sequence[0].clear_forces()
             warp.sim.collide(self.model, self.state_sequence[0])
@@ -182,14 +184,6 @@ class WarpFrankaEnv():
             self.state_sequence[0].joint_qd[-2:].fill_(0.0)
             self.state_sequence[1].joint_q[-2:].fill_(0.0)
             self.state_sequence[1].joint_qd[-2:].fill_(0.0)
-
-            # if np.linalg.norm(self.state_sequence[1].joint_qd.numpy()[3:6])>0.1 and self.flag:
-            #     print('After hitting time:')
-            #     print(f'Box linear speed: {np.linalg.norm(self.state_sequence[1].joint_qd.numpy()[3:6])} ')
-            #     print(f'xyz: {self.state_sequence[1].joint_qd.numpy()[3:6]}')
-                # print(f'End effector speed: {np.linalg.norm(self.state_sequence[1].body_qd.numpy()[10,3:6])} ')
-                # print(f'xyz: {self.state_sequence[1].body_qd.numpy()[10,3:6]}')
-                # self.flag = 0
             
             self.state_sequence[0], self.state_sequence[1] = self.state_sequence[1], self.state_sequence[0]
 
@@ -206,6 +200,15 @@ class WarpFrankaEnv():
             
             self.state_sequence[0], self.state_sequence[1] = self.state_sequence[1], self.state_sequence[0]
 
+    def evaluate_speed(self,ee_speed):
+        self.state_sequence = [self.model.state()]
+        self.state_sequence[0].joint_q.assign(self.model.joint_q.numpy().tolist()[:7] +self.joint_q_franka)
+
+        self.joint_qd_franka = compute_joint_v_from_ee(np.array(self.joint_q_franka),np.array([1.0,0.0,0.0])*ee_speed)
+        self.model.joint_qd[6:].assign(self.joint_qd_franka)
+        self.state_sequence[0].joint_qd[6:].assign(self.joint_qd_franka)
+        warp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state_sequence[0])
+        return np.linalg.norm(self.state_sequence[0].body_qd.numpy()[10,3:6])
 
     def forward(self,ee_speed):
         error = 10.0
@@ -214,23 +217,36 @@ class WarpFrankaEnv():
             # slow simulation
             self.state_sequence = [self.model.state(), self.model.state()]
             self.state_sequence[0].joint_q.assign(self.model.joint_q.numpy().tolist()[:7] +self.joint_q_franka)
+
+            self.joint_qd_franka = compute_joint_v_from_ee(np.array(self.joint_q_franka),np.array([1.0,0.0,0.0])*ee_speed)
+            self.model.joint_qd[6:].assign(self.joint_qd_franka)
+            self.state_sequence[0].joint_qd[6:].assign(self.joint_qd_franka)
             warp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state_sequence[0])
             self.flag = 0
             self.model.joint_axis_mode.assign([2]*9)
             self.model.joint_target_ke.fill_(20.0)
-            # if self.renderer:
-            #     self.render()
+            if self.renderer_1:
+                self.render_1()
 
             self.sim_substeps = self.sim_substeps_1
             self.sim_dt = self.sim_dt_1
-            for i in range(int(6/ee_speed)):
-                self.simulate_slow(ee_speed)
-                # if self.renderer:
-                #     self.render()
+            step = 0
+            while True:
+                self.simulate_slow(ee_speed,step)
+                if self.renderer_1:
+                    self.render_1()
 
                 box_linear_speed = np.linalg.norm(self.state_sequence[0].joint_qd.numpy()[3:6])
+                step += 1
                 if box_linear_speed > 0.1 and self.flag==0:
+                    # print(f'ee speed: {np.linalg.norm(self.state_sequence[0].body_qd.numpy()[10,3:6])}')
                     self.flag = 1
+                
+                if self.flag==1:
+                    distance = np.linalg.norm(self.state_sequence[0].body_q.numpy()[10,:3]-self.state_sequence[0].body_q.numpy()[0,:3])
+                    if distance > 0.04:
+                        break
+
         
         with warp.ScopedTimer("fast step"):
             # fast simulation
@@ -246,15 +262,15 @@ class WarpFrankaEnv():
             warp.sim.eval_fk(self.model_simple, self.model_simple.joint_q, self.model_simple.joint_qd, None, self.state_sequence[0])
 
 
-            for i in range(int(6/ee_speed),self.num_frames):
+            for _ in range(step,self.num_frames):
                 self.simulate_fast()            
                 
-                self.render(renderer=self.renderer)
+                if self.renderer_2:
+                    self.render_2()
                 
                 box_linear_speed = np.linalg.norm(self.state_sequence[0].joint_qd.numpy()[3:6]) 
                 if box_linear_speed < 0.01 and self.flag==1:
                     projection = np.dot(self.state_sequence[0].joint_q.numpy()[:3],self.orientation)
-                    # projection = np.dot((self.state_sequence[0].body_q.numpy()[0,:3]-self.initial_position),self.orientation)
                     error = projection - np.dot(np.array(self.target)-np.array(self.initial_position),self.orientation)
                     # pdb.set_trace()
                     break
@@ -272,19 +288,33 @@ class WarpFrankaEnv():
         return error,self.joint_q_franka
 
 
-    def render(self,renderer):
-            renderer.begin_frame(self.render_time)
-            renderer.render(self.state_sequence[0])
-            renderer.render_box(
-                pos=self.target,
-                rot=warp.quat_identity(),
-                extents=self.box_size,
-                name="target",
-                color=(1.0, 0.0, 0.0),
-            )
+    def render_1(self):
+        self.renderer_1.begin_frame(self.render_time_1)
+        self.renderer_1.render(self.state_sequence[0])
+        self.renderer_1.render_box(
+            pos=self.target,
+            rot=warp.quat_identity(),
+            extents=self.box_size,
+            name="target",
+            color=(1.0, 0.0, 0.0),
+        )
 
-            renderer.end_frame()
-            self.render_time += self.frame_dt
+        self.renderer_1.end_frame()
+        self.render_time_1 += self.frame_dt
+    
+    def render_2(self):
+        self.renderer_2.begin_frame(self.render_time_2)
+        self.renderer_2.render(self.state_sequence[0])
+        self.renderer_2.render_box(
+            pos=self.target,
+            rot=warp.quat_identity(),
+            extents=self.box_size,
+            name="target",
+            color=(1.0, 0.0, 0.0),
+        )
+
+        self.renderer_2.end_frame()
+        self.render_time_2 += self.frame_dt
 
 
 # env = WarpFrankaEnv(stage_path='franka_shuffleboard.usda',integrator='featherstone',num_frames = 120, mu = 0.05)

@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 import scipy
 import subprocess
 import re
+import pdb
 
 urdf_path = "franka/franka.urdf"  # 替换为你的 URDF 文件路径
 model = pin.buildModelFromUrdf(urdf_path)
@@ -43,7 +44,7 @@ def hitting_pose(position, rotation, bound_lower, bound_upper):
         
         # 获取当前末端执行器的位姿
         current_placement = data.oMf[end_effector_frame_id]
-        current_position = current_placement.translation#-np.array([0.0, 0.0, 0.005])
+        current_position = current_placement.translation-np.array([0.0, 0.0, 0.005])
         current_rotation = current_placement.rotation
         
         # 计算位置误差

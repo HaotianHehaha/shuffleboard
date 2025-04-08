@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 运行 Python 脚本并捕获输出
-output=$(python play_shuffleboard_with_franka.py --stage_path 'franka_shuffleboard.usda' --filepath "raw_data/apriltag_poses_1743692874.json" --train_iters_planning 5)
+output=$(python play_shuffleboard_with_franka.py --stage_path_1 'franka_shuffleboard_1.usda' --stage_path_2 'franka_shuffleboard_2.usda' --filepath "raw_data/apriltag_poses_1743756186.json" --train_iters_planning 5)
 
 # echo "$output"
 

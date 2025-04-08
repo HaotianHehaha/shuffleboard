@@ -15,7 +15,7 @@ width1 = 0.04
 width2 = 0.04
 height = 0.04
 
-mass = 0.0488
+mass = 0.0402
 density = mass / (width1 * width2 * height)
 
 @wp.kernel
@@ -52,13 +52,13 @@ def enforce_grad_kernel(lower_bound: wp.float32, upper_bound: wp.float32, x: wp.
 
 
 class sysID():
-    def __init__(self,  filepath = 'apriltag_poses_1741847062.json', verbose=False):
+    def __init__(self,  filepath , verbose=False):
         self.verbose = verbose
 
         # get real robot trajectory
         self.real_setting = trajectory_tracking.tracking(filepath)
         # seconds
-        sim_duration = 3.0 #(self.real_setting['final_time'] - self.real_setting['initial_time'])/1000
+        sim_duration = 4.0 #(self.real_setting['final_time'] - self.real_setting['initial_time'])/1000
 
         # control frequency
         fps = 60
@@ -78,8 +78,8 @@ class sysID():
         self.ke = 100
         self.kd = 1
         self.kf = 100.0
-        self.mu = 0.03
-        self.best_mu = 0.03
+        self.mu = 0.01
+        self.best_mu = 0.01
         self.grad_lower_bound = wp.float32(-1)
         self.grad_upper_bound = wp.float32(1)
 
