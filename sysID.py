@@ -57,8 +57,9 @@ class sysID():
 
         # get real robot trajectory
         self.real_setting = trajectory_tracking.tracking(filepath)
+        # pdb.set_trace()
         # seconds
-        sim_duration = 4.0 #(self.real_setting['final_time'] - self.real_setting['initial_time'])/1000
+        sim_duration = 2.0 #(self.real_setting['final_time'] - self.real_setting['initial_time'])/1000
 
         # control frequency
         fps = 60
@@ -78,8 +79,8 @@ class sysID():
         self.ke = 100
         self.kd = 1
         self.kf = 100.0
-        self.mu = 0.01
-        self.best_mu = 0.01
+        self.mu = 0.02
+        self.best_mu = 0.02
         self.grad_lower_bound = wp.float32(-1)
         self.grad_upper_bound = wp.float32(1)
 
@@ -172,7 +173,7 @@ class sysID():
             # gradient descent step
             x = self.model.shape_materials.mu
 
-            if self.loss.numpy()[0]< 1e-4:
+            if self.loss.numpy()[0]< 1e-5:
                 flag = 1
             else:
                 flag = 0
@@ -180,8 +181,8 @@ class sysID():
             if self.loss.numpy()[0] < self.best_loss:
                 self.best_loss = self.loss.numpy()[0]
                 self.best_mu = x.numpy()[0]
-                self.render()
-                self.renderer.save()
+                # self.render()
+                # self.renderer.save()
 
             # pdb.set_trace()
             wp.launch(enforce_grad_kernel, dim=x.grad.shape[0], inputs=[self.grad_lower_bound, self.grad_upper_bound, x.grad])

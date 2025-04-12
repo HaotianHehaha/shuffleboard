@@ -148,11 +148,11 @@ def tracking(filepath ):
         transformed_data[i+1]['velocity'] = transformed_velocities[i]['velocity']
         # transformed_data[i]['angular_velocity'] = transformed_angular_velocities[i]['angular_velocity']
         v.append(np.linalg.norm(np.array(transformed_velocities[i]['velocity'])))
-    
+
     # get initial data
     # print(np.array([transformed_data[0]['translation']['x'], transformed_data[0]['translation']['y'], transformed_data[0]['translation']['z']]))
 
-    index = np.argmax(v)+4
+    index = np.argmax(v)+2
     initial_position = np.array([transformed_data[index+1]['translation']['x'], transformed_data[index+1]['translation']['y'], transformed_data[index+1]['translation']['z']])
     initial_orientation = np.array(transformed_data[index+1]['rotation_matrix'])
     initial_orientation = fix_rotation_matrix(initial_orientation)

@@ -246,6 +246,9 @@ class WarpFrankaEnv():
                     distance = np.linalg.norm(self.state_sequence[0].body_q.numpy()[10,:3]-self.state_sequence[0].body_q.numpy()[0,:3])
                     if distance > 0.04:
                         break
+                    # v = np.linalg.norm(self.state_sequence[0].body_qd.numpy()[0,3:6])
+                    # if v < 0.01:
+                    #     break
 
         
         with warp.ScopedTimer("fast step"):

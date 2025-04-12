@@ -13,10 +13,13 @@ def main(args):
      [0.0, 0.0, 0.0, 1.0]])
     
 
-    target_position, _ = [ 0.5273486 , -0.74015833 , 0.10949806],[]#get_position(transition_matrix)
+    target_position, _ = [  0.53362988, -0.6218895 ,  0.11144529],[]#get_position(transition_matrix)
+    # position1 : [ 0.53362988, -0.6218895 ,  0.11144529]
+    # position2 : [ 0.54552426 ,-0.71959678,  0.1170872 ]
+    # position3 : [ 0.5410096 , -0.78296564,  0.11270821]
     print(f'target_position: {target_position}')
-    
     # pdb.set_trace()
+    
     initial_position, rotation_matrix = get_position(transition_matrix)
     print(f'initial_position: {initial_position}')
     print(f'rotation_matrix: {rotation_matrix}')
@@ -25,47 +28,57 @@ def main(args):
 
 
     
-    # example = sysID( filepath=args.filepath,verbose=args.verbose)
+    example = sysID( filepath=args.filepath,verbose=args.verbose)
 
-    # # replay and optimize
-    # for i in range(args.train_iters_id):
-    #     flag = example.step()
-    #     if i == int(args.train_iters_id*1/4):
-    #         # learning rate decay
-    #         example.optimizer.lr /= 2
-    #     elif i == int(args.train_iters_id*1/2):
-    #         # learning rate decay
-    #         example.optimizer.lr /= 2
-    #     if flag:
-    #         break
+    # replay and optimize
+    for i in range(args.train_iters_id):0.31
+        flag = example.step()
+        if i == int(args.train_iters_id*1/4):
+            # learning rate decay
+            example.optimizer.lr /= 2
+        elif i == int(args.train_iters_id*1/2):
+            # learning rate decay
+            example.optimizer.lr /= 2
+        if flag:
+            break
 
-    # mu = example.best_mu # 0.003 # 梯度爆炸
-    # loss = example.best_loss
-    # print(f'mu: {mu} loss:{loss} flag:{flag}')
-    mu = 0.01
+    mu = example.best_mu # 0.003 # 梯度爆炸
+    loss = example.best_loss
+    print(f'mu: {mu} loss:{loss} flag:{flag}')
+    # mu = 0.01
+    # pdb.set_trace()
 
-    ee_speed = 0.35
+    # ee_speed_init = 0.46
+    ee_speed = 0.4
     lr = 0.1
     env = WarpFrankaEnv(stage_path_1=args.stage_path_1,stage_path_2=args.stage_path_2,integrator='featherstone',num_frames = args.num_frames, mu = mu, initial_position = initial_position,target_position = target_position)
     for _ in tqdm(range(args.train_iters_planning)):
         error,hitting_pose = env.step(ee_speed=ee_speed)  
-        
+        print(f'ee_speed:{ee_speed} error:{error}')
         if abs(error)<0.01:
             break
         ee_speed -= lr*error
-        print(f'ee_speed:{ee_speed} error:{error}')
-    # error,hitting_pose = env.step(ee_speed=ee_speed)
+        
+    error,hitting_pose = env.step(ee_speed=ee_speed)
 
-        if env.renderer_1:
-            env.renderer_1.save()
-        if env.renderer_2:
-            env.renderer_2.save()
+    if env.renderer_1:
+        env.renderer_1.save()
+    if env.renderer_2:
+        env.renderer_2.save()
     
-    ee_speed = env.evaluate_speed(ee_speed=ee_speed)
-    print(f'real_ee_speed:{ee_speed} error:{error}') # 不清楚为什么会有gap？
+    ee_speed_1 = env.evaluate_speed(ee_speed=ee_speed)
+    print(f'real_ee_speed:{ee_speed_1} error:{error}') # 不清楚为什么会有gap？
+
+    # 人工检查优化结果，从键盘读入数值赋给ee_speed_1，如果没有默认原来数值
+    input_speed = input('ee_speed_1:')
+    if input_speed != '':
+        ee_speed_1 = float(input_speed)
+
+
+
 
     orientation = (np.array(target_position)-np.array(initial_position))/np.linalg.norm(np.array(target_position)-np.array(initial_position))
-    ee_speed = (ee_speed*orientation).tolist()[:2]
+    ee_speed = ((ee_speed_1*2.5-0.365)*orientation).tolist()[:2]
 
 
     return ee_speed, hitting_pose
