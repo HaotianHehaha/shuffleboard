@@ -105,6 +105,8 @@ class WarpFrankaEnv():
             self.renderer_2 = warp.sim.render.SimRenderer(self.model_simple, stage_path_2, scaling=1.0)
         
         self.flag = 0 # 0 represent before hitting time  1 represent after hitting time
+        self.best_ee_speed = 0.4
+        self.best_error = 10.
     
     def reset(self,URDF_PATH):
         builder = warp.sim.ModelBuilder(up_vector=(0.0, 0.0, 1.0))
@@ -275,6 +277,9 @@ class WarpFrankaEnv():
                 if box_linear_speed < 0.01 and self.flag==1:
                     projection = np.dot(self.state_sequence[0].joint_q.numpy()[:3],self.orientation)
                     error = projection - np.dot(np.array(self.target)-np.array(self.initial_position),self.orientation)
+                    if abs(error) < self.best_error:
+                        self.best_ee_speed = ee_speed
+                        self.best_error = abs(error)
                     # pdb.set_trace()
                     break
 

@@ -13,10 +13,10 @@ def main(args):
      [0.0, 0.0, 0.0, 1.0]])
     
 
-    target_position, _ = [  0.53362988, -0.6218895 ,  0.11144529],[]#get_position(transition_matrix)
-    # position1 : [ 0.53362988, -0.6218895 ,  0.11144529]
-    # position2 : [ 0.54552426 ,-0.71959678,  0.1170872 ]
-    # position3 : [ 0.5410096 , -0.78296564,  0.11270821]
+    target_position, _ = [ 0.54362988, -0.6218895 ,  0.11144529 ],[]#get_position(transition_matrix)
+    # position1 : [ 0.54362988, -0.6218895 ,  0.11144529]
+    # position2 : [ 0.54552426 ,-0.70059678,  0.1170872 ]
+    # position3 : [ 0.5410096 , -0.77296564,  0.11270821]
     print(f'target_position: {target_position}')
     # pdb.set_trace()
     
@@ -31,7 +31,7 @@ def main(args):
     example = sysID( filepath=args.filepath,verbose=args.verbose)
 
     # replay and optimize
-    for i in range(args.train_iters_id):0.31
+    for i in range(args.train_iters_id):
         flag = example.step()
         if i == int(args.train_iters_id*1/4):
             # learning rate decay
@@ -59,21 +59,30 @@ def main(args):
             break
         ee_speed -= lr*error
         
-    error,hitting_pose = env.step(ee_speed=ee_speed)
+    # error,hitting_pose = env.step(ee_speed=ee_speed)
 
     if env.renderer_1:
         env.renderer_1.save()
     if env.renderer_2:
         env.renderer_2.save()
     
-    ee_speed_1 = env.evaluate_speed(ee_speed=ee_speed)
+    ee_speed_1 = env.evaluate_speed(ee_speed=env.best_ee_speed)
     print(f'real_ee_speed:{ee_speed_1} error:{error}') # 不清楚为什么会有gap？
 
     # 人工检查优化结果，从键盘读入数值赋给ee_speed_1，如果没有默认原来数值
-    input_speed = input('ee_speed_1:')
-    if input_speed != '':
-        ee_speed_1 = float(input_speed)
 
+    # input_speed = input('ee_speed_1:')
+    # if input_speed != '':
+    #     ee_speed_1 = float(input_speed)
+    
+    distance = np.linalg.norm(np.array(target_position)-np.array(initial_position))
+    if distance > 0.68 and distance < 0.8:
+        ee_speed_1 = np.clip(ee_speed_1, 0.34, 0.352)
+    elif distance > 0.60:
+        ee_speed_1 = np.clip(ee_speed_1, 0.328, 0.333)
+    elif distance > 0.50:
+        ee_speed_1 = np.clip(ee_speed_1, 0.305, 0.315)
+    print(f'ee_speed_final: {ee_speed_1}')
 
 
 

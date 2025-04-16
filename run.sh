@@ -6,7 +6,7 @@ output=$(python play_shuffleboard_with_franka.py --stage_path_1 'franka_shuffleb
 # echo "$output"
 
 # 提取最大速度
-max_speed=$(echo "$output" | grep "Max Speed" | awk -F':' '{print $3}'| xargs)
+max_speed=$(echo "$output" | grep "Max Speed" | awk -F':' '{print $2}'| xargs)
 
 # 提取初始关节角
 initial_joint_angles=$(echo "$output" | grep "Initial Joint Angles" | awk -F': ' '{print $2}'|xargs)
@@ -18,8 +18,8 @@ if [[ -z "$max_speed" || -z "$initial_joint_angles" ]]; then
 fi
 
 # 打印提取的值（可选，用于调试）
-echo "Extracted Max Speed: $max_speed"
-echo "Extracted Initial Joint Angles: $initial_joint_angles"
+# echo "Extracted Max Speed: $max_speed"
+# echo "Extracted Initial Joint Angles: $initial_joint_angles"
 
 cd ..
 cd /media/haotian/new_volumn/code/libfranka/build
